@@ -10,14 +10,14 @@ TransactionStatus = Literal["pending", "allowed", "escalated", "blocked"]
 
 class TransactionCreate(BaseModel):
     event_type: EventType
-    step: Optional[int] = None
-    amount: float = Field(gt=0)
-    origin_account: str
-    dest_account: Optional[str] = None
-    origin_balance_before: Optional[float] = None
-    origin_balance_after: Optional[float] = None
-    dest_balance_before: Optional[float] = None
-    dest_balance_after: Optional[float] = None
+    step: Optional[int] = Field(default=None, ge=0)
+    amount: float = Field(gt=0, le=10_000_000)
+    origin_account: str = Field(min_length=1, max_length=100)
+    dest_account: Optional[str] = Field(default=None, max_length=100)
+    origin_balance_before: Optional[float] = Field(default=None, ge=0)
+    origin_balance_after: Optional[float] = Field(default=None, ge=0)
+    dest_balance_before: Optional[float] = Field(default=None, ge=0)
+    dest_balance_after: Optional[float] = Field(default=None, ge=0)
     is_fraud_label: Optional[bool] = None
 
 
