@@ -21,12 +21,12 @@ FEATURE_COLUMNS = [
 def build_features(df: pd.DataFrame) -> pd.DataFrame:
     frame = pd.DataFrame(index=df.index)
 
-    amount = df["amount"].astype(float)
-    origin_before = df["origin_balance_before"].fillna(0.0).astype(float)
-    origin_after = df["origin_balance_after"].fillna(0.0).astype(float)
-    dest_before = df["dest_balance_before"].fillna(0.0).astype(float)
-    dest_after = df["dest_balance_after"].fillna(0.0).astype(float)
-    step = df["step"].fillna(0).astype(int)
+    amount = pd.to_numeric(df["amount"], errors="coerce").fillna(0.0)
+    origin_before = pd.to_numeric(df["origin_balance_before"], errors="coerce").fillna(0.0)
+    origin_after = pd.to_numeric(df["origin_balance_after"], errors="coerce").fillna(0.0)
+    dest_before = pd.to_numeric(df["dest_balance_before"], errors="coerce").fillna(0.0)
+    dest_after = pd.to_numeric(df["dest_balance_after"], errors="coerce").fillna(0.0)
+    step = pd.to_numeric(df["step"], errors="coerce").fillna(0).astype(int)
 
     frame["amount"] = amount
     frame["origin_balance_before"] = origin_before

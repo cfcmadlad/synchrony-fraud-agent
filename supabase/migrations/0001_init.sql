@@ -53,7 +53,7 @@ create index if not exists idx_case_embeddings_vector
 
 create table if not exists agent_decision_log (
     id              uuid primary key default gen_random_uuid(),
-    transaction_id  uuid not null references transactions (id) on delete cascade,
+    transaction_id  uuid not null references transactions (id) on delete restrict,
     node_name       text not null check (node_name in (
                         'ingest', 'detect', 'retrieve', 'explain', 'guardrail', 'decide'
                     )),

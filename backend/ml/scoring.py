@@ -5,6 +5,7 @@ import joblib
 import numpy as np
 import xgboost as xgb
 
+from ml.archetypes import tag_archetype
 from ml.config import ISOLATION_FOREST_PATH, SCORING_CONFIG_PATH, XGB_MODEL_PATH
 from ml.features import build_features_single
 
@@ -31,11 +32,22 @@ class RiskModel:
 
         risk_score = self.fusion_alpha * supervised_score + (1 - self.fusion_alpha) * anomaly_score
 
-        return {
+        scores = {
             "supervised_score": supervised_score,
             "anomaly_score": anomaly_score,
             "risk_score": risk_score,
         }
+        scores.update(tag_archetype(record, scores))
+        return scores
+
+    def top_features(self, record: dict, k: int = 4) -> list[dict]:
+        features = build_features_single(record)[self.feature_columns]
+        dmatrix = xgb.DMatrix(features)
+        booster = self.supervised_model.get_booster()
+        contributions = booster.predict(dmatrix, pred_contribs=True)[0]
+        pairs = list(zip(self.feature_columns, contributions[:-1], strict=True))
+        pairs.sort(key=lambda pair: abs(pair[1]), reverse=True)
+        return [{"feature": name, "contribution": float(value)} for name, value in pairs[:k]]
 
 
 @lru_cache

@@ -16,8 +16,8 @@ frontend/.env.*
 __pycache__/
 *.py[cod]
 *.egg-info/
-.venv/
-venv/
+.venv*/
+venv*/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
@@ -33,6 +33,7 @@ backend/artifacts/*.pkl
 backend/artifacts/*.joblib
 backend/artifacts/*.json
 !backend/artifacts/.gitkeep
+!backend/artifacts/metrics.json
 data/raw/
 data/processed/
 *.csv

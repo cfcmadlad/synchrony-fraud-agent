@@ -25,6 +25,23 @@ class RiskScoreOut(BaseModel):
     supervised_score: float
     anomaly_score: float
     risk_score: float
+    archetype: str
+    label: str
+    rationale: str
+
+
+class PipelineResultOut(BaseModel):
+    transaction_id: UUID
+    supervised_score: float
+    anomaly_score: float
+    risk_score: float
+    archetype: str
+    label: str
+    rationale: str
+    explanation: str
+    explanation_provider: str
+    decision: str
+    similar_cases: list[dict]
 
 
 class TransactionOut(BaseModel):
