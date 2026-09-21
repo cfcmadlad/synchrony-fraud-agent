@@ -19,6 +19,7 @@ def _integration_ready() -> bool:
     reason="requires live Supabase credentials and trained model artifacts",
 )
 def test_known_fraud_sample_is_blocked_end_to_end():
+    from agent.decision_log import flush_decision_log
     from agent.graph import get_pipeline
     from app.db import get_service_client
 
@@ -36,7 +37,8 @@ def test_known_fraud_sample_is_blocked_end_to_end():
     }
 
     pipeline = get_pipeline()
-    result = pipeline.invoke({"record": known_fraud_sample, "retry_count": 0})
+    result = pipeline.invoke({"record": known_fraud_sample, "retry_count": 0, "log_entries": []})
+    flush_decision_log(result["log_entries"])
 
     assert result["risk_score"] > 0.5
     assert result["decision"] in ("block", "escalate")

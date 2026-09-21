@@ -1,4 +1,5 @@
-from typing import TypedDict
+import operator
+from typing import Annotated, TypedDict
 
 
 class SimilarCase(TypedDict):
@@ -24,3 +25,4 @@ class AgentState(TypedDict):
     guardrail_violations: list[str]
     retry_count: int
     decision: str
+    log_entries: Annotated[list[dict], operator.add]

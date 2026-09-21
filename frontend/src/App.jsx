@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider, useAuth } from "./lib/auth";
+import { ToastProvider } from "./lib/toast";
 import Layout from "./components/Layout";
 import LoginPage from "./pages/LoginPage";
 import RiskQueuePage from "./pages/RiskQueuePage";
@@ -10,7 +11,7 @@ import "./App.css";
 function ProtectedRoutes() {
   const { session, loading } = useAuth();
 
-  if (loading) return <div className="empty-state">Loading…</div>;
+  if (loading) return <div className="page-loading"><span className="spinner spinner-accent" />Loading…</div>;
   if (!session) return <Navigate to="/login" replace />;
 
   return (
@@ -29,10 +30,12 @@ function ProtectedRoutes() {
 function App() {
   return (
     <AuthProvider>
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/*" element={<ProtectedRoutes />} />
-      </Routes>
+      <ToastProvider>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/*" element={<ProtectedRoutes />} />
+        </Routes>
+      </ToastProvider>
     </AuthProvider>
   );
 }

@@ -55,6 +55,21 @@ class FraudFlagOut(BaseModel):
     created_at: datetime
 
 
+class AnalystFeedbackCreate(BaseModel):
+    decision: Literal["approve", "block"]
+    notes: Optional[str] = Field(default=None, max_length=1000)
+
+
+class AnalystFeedbackOut(BaseModel):
+    id: UUID
+    transaction_id: UUID
+    analyst_id: Optional[UUID] = None
+    analyst_email: Optional[str] = None
+    decision: str
+    notes: Optional[str] = None
+    created_at: datetime
+
+
 class TransactionOut(BaseModel):
     id: UUID
     event_type: EventType

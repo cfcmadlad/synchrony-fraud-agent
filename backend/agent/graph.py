@@ -1,10 +1,13 @@
+import functools
+import logging
+import time
 from functools import lru_cache
 
 from langgraph.graph import END, StateGraph
 
 from agent.guardrail import guardrail_check
 from agent.llm_client import generate_explanation
-from agent.decision_log import log_step
+from agent.decision_log import build_log_entry
 from agent.pii import scrub_record
 from agent.prompts import build_explain_prompt, build_fallback_explanation
 from agent.retrieval import retrieve_similar_cases
@@ -14,7 +17,25 @@ from ml.case_text import build_case_text
 from ml.config import DECISION_THRESHOLD_BLOCK, DECISION_THRESHOLD_ESCALATE, MAX_GUARDRAIL_RETRIES
 from ml.scoring import get_risk_model
 
+perf_logger = logging.getLogger("agent.perf")
 
+
+def timed_node(name):
+    def decorator(fn):
+        @functools.wraps(fn)
+        def wrapper(state):
+            started = time.perf_counter()
+            result = fn(state)
+            elapsed_ms = (time.perf_counter() - started) * 1000
+            perf_logger.info("node=%s duration_ms=%.2f", name, elapsed_ms)
+            return result
+
+        return wrapper
+
+    return decorator
+
+
+@timed_node("ingest")
 def ingest_node(state: AgentState) -> dict:
     record = state["record"]
     client = get_service_client()
@@ -37,10 +58,11 @@ def ingest_node(state: AgentState) -> dict:
         .data[0]
     )
     transaction_id = inserted["id"]
-    log_step(transaction_id, "ingest", record, inserted)
-    return {"transaction_id": transaction_id}
+    entry = build_log_entry(transaction_id, "ingest", record, inserted)
+    return {"transaction_id": transaction_id, "log_entries": [entry]}
 
 
+@timed_node("detect")
 def detect_node(state: AgentState) -> dict:
     model = get_risk_model()
     result = model.score(state["record"])
@@ -51,7 +73,9 @@ def detect_node(state: AgentState) -> dict:
         "id", state["transaction_id"]
     ).execute()
 
-    log_step(state["transaction_id"], "detect", state["record"], {**result, "top_features": top_features})
+    entry = build_log_entry(
+        state["transaction_id"], "detect", state["record"], {**result, "top_features": top_features}
+    )
 
     return {
         "supervised_score": result["supervised_score"],
@@ -61,9 +85,11 @@ def detect_node(state: AgentState) -> dict:
         "label": result["label"],
         "rationale": result["rationale"],
         "top_features": top_features,
+        "log_entries": [entry],
     }
 
 
+@timed_node("retrieve")
 def retrieve_node(state: AgentState) -> dict:
     score_result = {
         "supervised_score": state["supervised_score"],
@@ -75,9 +101,9 @@ def retrieve_node(state: AgentState) -> dict:
     query_text = build_case_text(state["record"], score_result, outcome=None)
     matches = retrieve_similar_cases(query_text, exclude_transaction_id=state["transaction_id"])
 
-    log_step(state["transaction_id"], "retrieve", {"query_text": query_text}, {"matches": matches})
+    entry = build_log_entry(state["transaction_id"], "retrieve", {"query_text": query_text}, {"matches": matches})
 
-    return {"similar_cases": matches}
+    return {"similar_cases": matches, "log_entries": [entry]}
 
 
 def build_evidence(state: AgentState) -> dict:
@@ -94,6 +120,7 @@ def build_evidence(state: AgentState) -> dict:
     }
 
 
+@timed_node("explain")
 def explain_node(state: AgentState) -> dict:
     evidence = build_evidence(state)
     prompt = build_explain_prompt(evidence)
@@ -103,32 +130,33 @@ def explain_node(state: AgentState) -> dict:
         explanation = build_fallback_explanation(evidence)
         provider = "template_fallback"
 
-    log_step(
+    entry = build_log_entry(
         state["transaction_id"],
         "explain",
         {"prompt": prompt},
         {"explanation": explanation, "provider": provider},
     )
 
-    return {"explanation": explanation, "explanation_provider": provider}
+    return {"explanation": explanation, "explanation_provider": provider, "log_entries": [entry]}
 
 
+@timed_node("guardrail")
 def guardrail_node(state: AgentState) -> dict:
     evidence = build_evidence(state)
     passed, violations = guardrail_check(state["explanation"], evidence)
     retry_count = state.get("retry_count", 0)
 
     if passed:
-        log_step(
+        entry = build_log_entry(
             state["transaction_id"],
             "guardrail",
             {"explanation": state["explanation"]},
             {"passed": True, "violations": []},
         )
-        return {"guardrail_passed": True, "guardrail_violations": []}
+        return {"guardrail_passed": True, "guardrail_violations": [], "log_entries": [entry]}
 
     if retry_count < MAX_GUARDRAIL_RETRIES:
-        log_step(
+        entry = build_log_entry(
             state["transaction_id"],
             "guardrail",
             {"explanation": state["explanation"]},
@@ -138,10 +166,11 @@ def guardrail_node(state: AgentState) -> dict:
             "guardrail_passed": False,
             "guardrail_violations": violations,
             "retry_count": retry_count + 1,
+            "log_entries": [entry],
         }
 
     fallback = build_fallback_explanation(evidence)
-    log_step(
+    entry = build_log_entry(
         state["transaction_id"],
         "guardrail",
         {"explanation": state["explanation"]},
@@ -152,6 +181,7 @@ def guardrail_node(state: AgentState) -> dict:
         "guardrail_violations": violations,
         "explanation": fallback,
         "explanation_provider": "template_fallback",
+        "log_entries": [entry],
     }
 
 
@@ -159,6 +189,7 @@ def route_after_guardrail(state: AgentState) -> str:
     return "decide" if state["guardrail_passed"] else "explain"
 
 
+@timed_node("decide")
 def decide_node(state: AgentState) -> dict:
     risk_score = state["risk_score"]
 
@@ -186,14 +217,14 @@ def decide_node(state: AgentState) -> dict:
         }
     ).execute()
 
-    log_step(
+    entry = build_log_entry(
         state["transaction_id"],
         "decide",
         {"risk_score": risk_score},
         {"decision": decision, "status": status},
     )
 
-    return {"decision": decision}
+    return {"decision": decision, "log_entries": [entry]}
 
 
 def build_graph():

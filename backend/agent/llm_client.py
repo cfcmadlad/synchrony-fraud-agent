@@ -54,15 +54,19 @@ def call_gemini(prompt: str) -> str:
 
 
 def generate_explanation(prompt: str) -> tuple[str | None, str]:
-    try:
-        text = call_groq(prompt)
-        if text:
-            return text, "groq"
-        logger.warning("groq returned empty content, falling back to gemini")
-    except groq.RateLimitError:
-        logger.warning("groq rate limit hit, falling back to gemini")
-    except Exception:
-        logger.exception("groq call failed, falling back to gemini")
+    for attempt in range(2):
+        try:
+            text = call_groq(prompt)
+            if text:
+                return text, "groq"
+            logger.warning("groq returned empty content")
+        except groq.RateLimitError:
+            logger.warning("groq rate limit hit, falling back to gemini")
+            break
+        except Exception:
+            logger.exception("groq call failed (attempt %d)", attempt + 1)
+        if attempt == 0:
+            time.sleep(1)
 
     try:
         text = call_gemini(prompt)

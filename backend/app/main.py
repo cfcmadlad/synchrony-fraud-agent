@@ -9,7 +9,9 @@ from slowapi.util import get_remote_address
 
 from app.config import get_settings
 from app.middleware import RequestLoggingMiddleware, SecurityHeadersMiddleware
-from app.routers import analytics, decision_log, me, pipeline, scoring, transactions
+from app.routers import analytics, decision_log, feedback, me, pipeline, scoring, transactions
+from ml.embedder import get_embedder
+from ml.scoring import get_risk_model
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 
@@ -26,7 +28,7 @@ app.add_middleware(SlowAPIMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.frontend_origin],
+    allow_origins=settings.frontend_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -38,6 +40,13 @@ app.include_router(pipeline.router)
 app.include_router(decision_log.router)
 app.include_router(analytics.router)
 app.include_router(me.router)
+app.include_router(feedback.router)
+
+
+@app.on_event("startup")
+def warm_model_caches() -> None:
+    get_risk_model()
+    get_embedder()
 
 
 @app.get("/api/health")

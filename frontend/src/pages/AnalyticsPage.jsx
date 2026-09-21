@@ -12,11 +12,20 @@ import {
   Cell,
   Legend,
 } from "recharts";
+import { Activity, AlertCircle, BarChart3, Gauge, PieChart as PieChartIcon, ShieldOff, ShieldQuestion, TrendingUp } from "lucide-react";
 import { api } from "../lib/api";
 import { formatArchetype } from "../components/common";
 
-const DECISION_COLORS = { allow: "#2ea043", escalate: "#b8790a", block: "#d32f2f" };
-const ARCHETYPE_COLORS = ["#aa3bff", "#2ea043", "#b8790a", "#d32f2f", "#4b8bf5"];
+const DECISION_COLORS = { allow: "#16A34A", escalate: "#B45309", block: "#DC2626" };
+const ARCHETYPE_COLORS = ["#0B63B0", "#16A34A", "#B45309", "#DC2626", "#7C4DBD"];
+const AXIS_COLOR = "#8A93A3";
+const GRID_COLOR = "#E2E7EF";
+
+const tooltipStyle = {
+  contentStyle: { background: "#FFFFFF", border: "1px solid #E2E7EF", borderRadius: 8, fontSize: 12.5, color: "#0B1220", boxShadow: "0 4px 16px rgba(15, 23, 42, 0.1)" },
+  labelStyle: { color: "#5B6472" },
+  itemStyle: { color: "#0B1220" },
+};
 
 export default function AnalyticsPage() {
   const [flags, setFlags] = useState([]);
@@ -56,11 +65,13 @@ export default function AnalyticsPage() {
     }
 
     const avgRisk = total ? flags.reduce((sum, f) => sum + f.risk_score, 0) / total : 0;
+    const topArchetypeEntry = Object.entries(archetypeCounts).sort((a, b) => b[1] - a[1])[0];
 
     return {
       total,
       decisionCounts,
       avgRisk,
+      topArchetype: topArchetypeEntry ? { name: topArchetypeEntry[0], count: topArchetypeEntry[1] } : null,
       decisionData: Object.entries(decisionCounts).map(([decision, count]) => ({ decision, count })),
       archetypeData: Object.entries(archetypeCounts).map(([archetype, count]) => ({
         name: formatArchetype(archetype),
@@ -74,8 +85,8 @@ export default function AnalyticsPage() {
     };
   }, [flags]);
 
-  if (loading) return <div className="empty-state">Loading analytics…</div>;
-  if (error) return <div className="error-banner">{error}</div>;
+  if (loading) return <div className="page-loading"><span className="spinner spinner-accent" />Loading analytics…</div>;
+  if (error) return <div className="error-banner"><AlertCircle />{error}</div>;
 
   if (stats.total === 0) {
     return (
@@ -91,6 +102,8 @@ export default function AnalyticsPage() {
     );
   }
 
+  const blockRate = stats.total ? Math.round((stats.decisionCounts.block / stats.total) * 100) : 0;
+
   return (
     <div>
       <div className="page-header">
@@ -102,33 +115,54 @@ export default function AnalyticsPage() {
 
       <div className="stat-row">
         <div className="stat-card">
-          <label>Total decisions</label>
-          <div className="value">{stats.total}</div>
+          <span className="icon-badge icon-badge-blue"><BarChart3 /></span>
+          <div className="stat-card-body">
+            <label>Total decisions</label>
+            <div className="value">{stats.total}</div>
+          </div>
         </div>
         <div className="stat-card">
-          <label>Blocked</label>
-          <div className="value">{stats.decisionCounts.block || 0}</div>
+          <span className="icon-badge icon-badge-red"><ShieldOff /></span>
+          <div className="stat-card-body">
+            <label>Blocked</label>
+            <div className="value">{stats.decisionCounts.block || 0}</div>
+          </div>
         </div>
         <div className="stat-card">
-          <label>Escalated</label>
-          <div className="value">{stats.decisionCounts.escalate || 0}</div>
+          <span className="icon-badge icon-badge-amber"><ShieldQuestion /></span>
+          <div className="stat-card-body">
+            <label>Escalated</label>
+            <div className="value">{stats.decisionCounts.escalate || 0}</div>
+          </div>
         </div>
         <div className="stat-card">
-          <label>Avg risk score</label>
-          <div className="value">{Math.round(stats.avgRisk * 100)}%</div>
+          <span className="icon-badge icon-badge-purple"><Gauge /></span>
+          <div className="stat-card-body">
+            <label>Avg risk score</label>
+            <div className="value">{Math.round(stats.avgRisk * 100)}%</div>
+          </div>
         </div>
       </div>
 
+      {stats.topArchetype && (
+        <div className="insight-banner">
+          <span>
+            <strong>{blockRate}%</strong> of decisions this run were blocked outright, and the most common fraud
+            pattern was <strong>{formatArchetype(stats.topArchetype.name)}</strong> ({stats.topArchetype.count} cases).
+          </span>
+        </div>
+      )}
+
       <div className="chart-grid">
         <div className="card">
-          <h2>Decisions</h2>
+          <h2 className="with-icon-badge"><span className="icon-badge icon-badge-blue"><BarChart3 /></span>Decisions</h2>
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={stats.decisionData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-              <XAxis dataKey="decision" stroke="var(--text)" fontSize={12} />
-              <YAxis stroke="var(--text)" fontSize={12} allowDecimals={false} />
-              <Tooltip />
-              <Bar dataKey="count">
+              <CartesianGrid strokeDasharray="3 3" stroke={GRID_COLOR} vertical={false} />
+              <XAxis dataKey="decision" stroke={AXIS_COLOR} fontSize={12} tickLine={false} axisLine={{ stroke: GRID_COLOR }} />
+              <YAxis stroke={AXIS_COLOR} fontSize={12} allowDecimals={false} tickLine={false} axisLine={false} />
+              <Tooltip {...tooltipStyle} cursor={{ fill: "rgba(255,255,255,0.03)" }} />
+              <Bar dataKey="count" radius={[6, 6, 0, 0]}>
                 {stats.decisionData.map((entry) => (
                   <Cell key={entry.decision} fill={DECISION_COLORS[entry.decision] || "#999"} />
                 ))}
@@ -138,7 +172,7 @@ export default function AnalyticsPage() {
         </div>
 
         <div className="card">
-          <h2>Fraud archetypes</h2>
+          <h2 className="with-icon-badge"><span className="icon-badge icon-badge-purple"><PieChartIcon /></span>Fraud archetypes</h2>
           <ResponsiveContainer width="100%" height={260}>
             <PieChart>
               <Pie data={stats.archetypeData} dataKey="value" nameKey="name" outerRadius={90} label>
@@ -146,34 +180,34 @@ export default function AnalyticsPage() {
                   <Cell key={i} fill={ARCHETYPE_COLORS[i % ARCHETYPE_COLORS.length]} />
                 ))}
               </Pie>
-              <Tooltip />
-              <Legend />
+              <Tooltip {...tooltipStyle} />
+              <Legend wrapperStyle={{ fontSize: 12, color: AXIS_COLOR }} />
             </PieChart>
           </ResponsiveContainer>
         </div>
 
         <div className="card">
-          <h2>Avg risk by event type</h2>
+          <h2 className="with-icon-badge"><span className="icon-badge icon-badge-green"><TrendingUp /></span>Avg risk by event type</h2>
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={stats.eventTypeData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-              <XAxis dataKey="eventType" stroke="var(--text)" fontSize={11} />
-              <YAxis stroke="var(--text)" fontSize={12} unit="%" />
-              <Tooltip />
-              <Bar dataKey="avgRisk" fill="#aa3bff" />
+              <CartesianGrid strokeDasharray="3 3" stroke={GRID_COLOR} vertical={false} />
+              <XAxis dataKey="eventType" stroke={AXIS_COLOR} fontSize={11} tickLine={false} axisLine={{ stroke: GRID_COLOR }} />
+              <YAxis stroke={AXIS_COLOR} fontSize={12} unit="%" tickLine={false} axisLine={false} />
+              <Tooltip {...tooltipStyle} cursor={{ fill: "rgba(255,255,255,0.03)" }} />
+              <Bar dataKey="avgRisk" fill="#0B63B0" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
         <div className="card">
-          <h2>Risk score distribution</h2>
+          <h2 className="with-icon-badge"><span className="icon-badge icon-badge-blue"><Activity /></span>Risk score distribution</h2>
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={stats.histogramBuckets}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-              <XAxis dataKey="bucket" stroke="var(--text)" fontSize={10} />
-              <YAxis stroke="var(--text)" fontSize={12} allowDecimals={false} />
-              <Tooltip />
-              <Bar dataKey="count" fill="#4b8bf5" />
+              <CartesianGrid strokeDasharray="3 3" stroke={GRID_COLOR} vertical={false} />
+              <XAxis dataKey="bucket" stroke={AXIS_COLOR} fontSize={10} tickLine={false} axisLine={{ stroke: GRID_COLOR }} />
+              <YAxis stroke={AXIS_COLOR} fontSize={12} allowDecimals={false} tickLine={false} axisLine={false} />
+              <Tooltip {...tooltipStyle} cursor={{ fill: "rgba(255,255,255,0.03)" }} />
+              <Bar dataKey="count" fill="#4C93D6" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>

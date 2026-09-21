@@ -47,4 +47,7 @@ export const api = {
   }),
   getAnalyticsFraudFlags: (limit = 1000) => request(`/api/analytics/fraud-flags${toQuery({ limit })}`),
   runPipeline: (payload) => request("/api/pipeline/run", { method: "POST", body: JSON.stringify(payload) }),
+  getFeedback: (id) => request(`/api/transactions/${id}/feedback`),
+  submitFeedback: (id, payload) =>
+    request(`/api/transactions/${id}/feedback`, { method: "POST", body: JSON.stringify(payload) }),
 };
