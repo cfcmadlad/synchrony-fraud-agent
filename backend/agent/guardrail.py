@@ -41,6 +41,8 @@ def build_evidence_blob(evidence: dict) -> str:
         str(evidence["anomaly_score"] * 100),
         evidence["rationale"],
         evidence["label"],
+        str(record.get("origin_account", "")),
+        str(record.get("dest_account", "")),
     ]
     for key in (
         "origin_balance_before",

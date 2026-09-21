@@ -44,6 +44,17 @@ class PipelineResultOut(BaseModel):
     similar_cases: list[dict]
 
 
+class FraudFlagOut(BaseModel):
+    id: UUID
+    transaction_id: UUID
+    risk_score: float
+    supervised_score: Optional[float] = None
+    anomaly_score: Optional[float] = None
+    decision: str
+    reason_codes: Optional[dict] = None
+    created_at: datetime
+
+
 class TransactionOut(BaseModel):
     id: UUID
     event_type: EventType

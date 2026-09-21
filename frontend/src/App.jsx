@@ -1,81 +1,39 @@
-import { useState } from "react";
-import { api } from "./lib/api";
+import { Navigate, Route, Routes } from "react-router-dom";
+import { AuthProvider, useAuth } from "./lib/auth";
+import Layout from "./components/Layout";
+import LoginPage from "./pages/LoginPage";
+import RiskQueuePage from "./pages/RiskQueuePage";
+import TransactionDetailPage from "./pages/TransactionDetailPage";
+import AnalyticsPage from "./pages/AnalyticsPage";
 import "./App.css";
 
-function App() {
-  const [health, setHealth] = useState(null);
-  const [transactions, setTransactions] = useState([]);
-  const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(false);
+function ProtectedRoutes() {
+  const { session, loading } = useAuth();
 
-  async function checkHealth() {
-    setError(null);
-    try {
-      setHealth(await api.health());
-    } catch (err) {
-      setError(err.message);
-    }
-  }
-
-  async function sendDummyTransaction() {
-    setError(null);
-    setLoading(true);
-    try {
-      await api.createDummyTransaction();
-      setTransactions(await api.listTransactions());
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }
+  if (loading) return <div className="empty-state">Loading…</div>;
+  if (!session) return <Navigate to="/login" replace />;
 
   return (
-    <div className="app-shell">
-      <h1>Synchrony Fraud Agent — Stage 1 wiring check</h1>
-      <p className="subtitle">
-        This screen only proves the plumbing works: React → FastAPI → Supabase → FastAPI → React.
-        Real risk scoring, the agent pipeline, and the analyst UI come in later stages.
-      </p>
+    <Routes>
+      <Route element={<Layout />}>
+        <Route path="/" element={<Navigate to="/queue" replace />} />
+        <Route path="/queue" element={<RiskQueuePage />} />
+        <Route path="/transactions/:id" element={<TransactionDetailPage />} />
+        <Route path="/analytics" element={<AnalyticsPage />} />
+        <Route path="*" element={<Navigate to="/queue" replace />} />
+      </Route>
+    </Routes>
+  );
+}
 
-      <div className="actions">
-        <button onClick={checkHealth}>Check backend health</button>
-        <button onClick={sendDummyTransaction} disabled={loading}>
-          {loading ? "Sending…" : "Send dummy loan-disbursement event"}
-        </button>
-      </div>
-
-      {health && (
-        <pre className="panel">{JSON.stringify(health, null, 2)}</pre>
-      )}
-
-      {error && <p className="error">{error}</p>}
-
-      {transactions.length > 0 && (
-        <table className="panel">
-          <thead>
-            <tr>
-              <th>Event type</th>
-              <th>Amount</th>
-              <th>Origin account</th>
-              <th>Status</th>
-              <th>Created at</th>
-            </tr>
-          </thead>
-          <tbody>
-            {transactions.map((tx) => (
-              <tr key={tx.id}>
-                <td>{tx.event_type}</td>
-                <td>{tx.amount}</td>
-                <td>{tx.origin_account}</td>
-                <td>{tx.status}</td>
-                <td>{new Date(tx.created_at).toLocaleString()}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-    </div>
+function App() {
+  return (
+    <AuthProvider>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/*" element={<ProtectedRoutes />} />
+      </Routes>
+    </AuthProvider>
   );
 }
 

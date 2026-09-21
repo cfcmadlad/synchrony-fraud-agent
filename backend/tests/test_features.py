@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 import pandas as pd
 
 from ml.features import (
@@ -57,7 +59,12 @@ def test_missing_optional_fields_default_to_zero():
     )
     result = build_features_single(record).iloc[0]
     assert result["origin_balance_before"] == 0.0
-    assert result["hour_of_day"] == 0
+
+
+def test_missing_step_falls_back_to_current_utc_hour():
+    record = make_record(step=None)
+    result = build_features_single(record).iloc[0]
+    assert result["hour_of_day"] == datetime.now(timezone.utc).hour
 
 
 def test_amount_to_balance_ratio_avoids_division_by_zero():

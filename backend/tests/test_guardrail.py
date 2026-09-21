@@ -65,3 +65,14 @@ def test_percentage_of_risk_score_is_grounded():
     explanation = "This transaction has a 90% fused risk score."
     passed, violations = guardrail_check(explanation, make_evidence())
     assert passed
+
+
+def test_account_id_digits_in_explanation_are_grounded():
+    evidence = make_evidence(record={**make_evidence()["record"], "origin_account": "C956959892"})
+    explanation = (
+        "The loan disbursement from origin account C956959892 matches the synthetic "
+        "identity pattern, with a fused risk score of 0.90."
+    )
+    passed, violations = guardrail_check(explanation, evidence)
+    assert passed
+    assert violations == []

@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 import pandas as pd
 
 from ml.config import EVENT_TYPES
@@ -55,4 +57,6 @@ def build_features(df: pd.DataFrame, include_near_deterministic: bool = False) -
 
 
 def build_features_single(record: dict, include_near_deterministic: bool = False) -> pd.DataFrame:
+    if record.get("step") is None:
+        record = {**record, "step": datetime.now(timezone.utc).hour}
     return build_features(pd.DataFrame([record]), include_near_deterministic=include_near_deterministic)
