@@ -6,7 +6,7 @@ import pandas as pd
 import pytest
 
 from ml.features import FEATURE_COLUMNS, build_features
-from ml.train import train_anomaly_detector, train_supervised
+from ml.train import anomaly_bounds_by_event_type, train_anomaly_detectors_by_event_type, train_supervised
 
 
 def make_synthetic_dataset(n=400, seed=7):
@@ -52,26 +52,21 @@ def trained_risk_model(tmp_path, monkeypatch):
     y = df["is_fraud_label"].astype(int)
 
     supervised_model = train_supervised(X, y)
-    anomaly_model = train_anomaly_detector(X[y == 0])
-
-    legit_raw_scores = -anomaly_model.score_samples(X[y == 0])
-    anomaly_low = float(np.percentile(legit_raw_scores, 1))
-    anomaly_high = float(np.percentile(legit_raw_scores, 99))
+    anomaly_detectors = train_anomaly_detectors_by_event_type(df, X, y)
+    anomaly_bounds = anomaly_bounds_by_event_type(anomaly_detectors, df, X, y)
 
     xgb_path = tmp_path / "xgb_model.json"
     isoforest_path = tmp_path / "isolation_forest.joblib"
     config_path = tmp_path / "scoring_config.json"
 
     supervised_model.save_model(xgb_path)
-    joblib.dump(anomaly_model, isoforest_path)
+    joblib.dump(anomaly_detectors, isoforest_path)
 
     config_path.write_text(
         json.dumps(
             {
                 "feature_columns": FEATURE_COLUMNS,
-                "anomaly_low": anomaly_low,
-                "anomaly_high": anomaly_high,
-                "fusion_alpha": 0.7,
+                "anomaly_bounds": anomaly_bounds,
             }
         )
     )

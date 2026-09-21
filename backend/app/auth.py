@@ -1,3 +1,5 @@
+from functools import lru_cache
+
 import jwt
 from fastapi import Header, HTTPException
 from pydantic import BaseModel
@@ -12,18 +14,25 @@ class CurrentUser(BaseModel):
     role: str
 
 
+@lru_cache
+def get_jwks_client() -> jwt.PyJWKClient:
+    settings = get_settings()
+    jwks_url = f"{settings.supabase_url}/auth/v1/.well-known/jwks.json"
+    return jwt.PyJWKClient(jwks_url)
+
+
 def decode_token(authorization: str | None) -> dict:
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Missing bearer token")
 
     token = authorization.removeprefix("Bearer ").strip()
-    settings = get_settings()
 
     try:
+        signing_key = get_jwks_client().get_signing_key_from_jwt(token)
         return jwt.decode(
             token,
-            settings.supabase_jwt_secret,
-            algorithms=["HS256"],
+            signing_key.key,
+            algorithms=["ES256", "RS256"],
             audience="authenticated",
         )
     except jwt.PyJWTError as exc:

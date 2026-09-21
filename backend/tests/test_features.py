@@ -1,6 +1,11 @@
 import pandas as pd
 
-from ml.features import FEATURE_COLUMNS, build_features, build_features_single
+from ml.features import (
+    FEATURE_COLUMNS,
+    NEAR_DETERMINISTIC_COLUMNS,
+    build_features,
+    build_features_single,
+)
 
 
 def make_record(**overrides):
@@ -24,10 +29,16 @@ def test_feature_columns_match_output_columns():
     assert list(result.columns) == FEATURE_COLUMNS
 
 
-def test_fully_drained_disbursement_flagged():
-    result = build_features_single(make_record()).iloc[0]
+def test_fully_drained_disbursement_flagged_when_near_deterministic_included():
+    result = build_features_single(make_record(), include_near_deterministic=True).iloc[0]
     assert result["origin_balance_after_zero"] == 1
     assert result["origin_balance_delta"] == -5000.0
+
+
+def test_near_deterministic_columns_excluded_by_default():
+    result = build_features_single(make_record())
+    for column in NEAR_DETERMINISTIC_COLUMNS:
+        assert column not in result.columns
 
 
 def test_event_type_one_hot_is_exclusive():
@@ -51,7 +62,7 @@ def test_missing_optional_fields_default_to_zero():
 
 def test_amount_to_balance_ratio_avoids_division_by_zero():
     record = make_record(origin_balance_before=0.0, amount=100.0)
-    result = build_features_single(record).iloc[0]
+    result = build_features_single(record, include_near_deterministic=True).iloc[0]
     assert result["amount_to_origin_balance_ratio"] == 100.0
 
 

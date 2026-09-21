@@ -23,7 +23,9 @@ def test_risk_model_returns_expected_score_shape(trained_risk_model):
     assert 0.0 <= result["risk_score"] <= 1.0
 
 
-def test_risk_model_fuses_scores_with_configured_alpha(trained_risk_model):
+def test_risk_model_fuses_scores_with_event_type_alpha(trained_risk_model):
+    from ml.config import fusion_alpha_for_event_type
+
     record = {
         "event_type": "loan_disbursement",
         "step": 5,
@@ -35,11 +37,15 @@ def test_risk_model_fuses_scores_with_configured_alpha(trained_risk_model):
         "dest_balance_after": 6000.0,
     }
     result = trained_risk_model.score(record)
-    expected = (
-        trained_risk_model.fusion_alpha * result["supervised_score"]
-        + (1 - trained_risk_model.fusion_alpha) * result["anomaly_score"]
-    )
+    alpha = fusion_alpha_for_event_type(record["event_type"])
+    expected = alpha * result["supervised_score"] + (1 - alpha) * result["anomaly_score"]
     assert abs(result["risk_score"] - expected) < 1e-9
+
+
+def test_unlabeled_event_type_weighs_anomaly_score_more_heavily(trained_risk_model):
+    from ml.config import FUSION_ALPHA_LABELED, FUSION_ALPHA_UNLABELED
+
+    assert FUSION_ALPHA_UNLABELED < FUSION_ALPHA_LABELED
 
 
 def test_top_features_returns_k_entries_sorted_by_magnitude(trained_risk_model):

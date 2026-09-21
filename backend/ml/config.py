@@ -26,7 +26,15 @@ EVENT_TYPES = ["loan_disbursement", "installment_repayment", "fee_charge", "acco
 SUBSAMPLE_SIZE = 300_000
 HISTORICAL_SAMPLE_SIZE = 3_000
 RANDOM_STATE = 42
-FUSION_ALPHA = 0.7
+
+LABELED_EVENT_TYPES = ["loan_disbursement"]
+FUSION_ALPHA_LABELED = 0.7
+FUSION_ALPHA_UNLABELED = 0.6
+
+
+def fusion_alpha_for_event_type(event_type: str) -> float:
+    return FUSION_ALPHA_LABELED if event_type in LABELED_EVENT_TYPES else FUSION_ALPHA_UNLABELED
+
 
 DECISION_THRESHOLD_ESCALATE = 0.4
 DECISION_THRESHOLD_BLOCK = 0.75

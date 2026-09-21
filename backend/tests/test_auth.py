@@ -2,26 +2,36 @@ import time
 
 import jwt
 import pytest
+from cryptography.hazmat.primitives.asymmetric import ec
 from fastapi import HTTPException
 
 from app.auth import decode_token, get_current_user, require_role
-from app.config import get_settings
 
-TEST_SECRET = "unit-test-jwt-secret-value-long-enough"
+_private_key = ec.generate_private_key(ec.SECP256R1())
+_public_key = _private_key.public_key()
+
+_wrong_private_key = ec.generate_private_key(ec.SECP256R1())
 
 
-def make_token(sub="user-1", email="analyst@test.com", expired=False, audience="authenticated"):
+def make_token(sub="user-1", email="analyst@test.com", expired=False, audience="authenticated", key=None):
     exp = int(time.time()) - 3600 if expired else int(time.time()) + 3600
     payload = {"sub": sub, "email": email, "aud": audience, "exp": exp}
-    return jwt.encode(payload, TEST_SECRET, algorithm="HS256")
+    return jwt.encode(payload, key or _private_key, algorithm="ES256")
+
+
+class FakeSigningKey:
+    def __init__(self, key):
+        self.key = key
+
+
+class FakeJwksClient:
+    def get_signing_key_from_jwt(self, _token):
+        return FakeSigningKey(_public_key)
 
 
 @pytest.fixture
-def patched_secret(monkeypatch):
-    get_settings.cache_clear()
-    monkeypatch.setenv("SUPABASE_JWT_SECRET", TEST_SECRET)
-    yield
-    get_settings.cache_clear()
+def patched_jwks(monkeypatch):
+    monkeypatch.setattr("app.auth.get_jwks_client", lambda: FakeJwksClient())
 
 
 class FakeResult:
@@ -54,43 +64,39 @@ class FakeClient:
         return FakeTable(self.role_by_user)
 
 
-def test_decode_token_rejects_missing_header(patched_secret):
+def test_decode_token_rejects_missing_header(patched_jwks):
     with pytest.raises(HTTPException) as exc_info:
         decode_token(None)
     assert exc_info.value.status_code == 401
 
 
-def test_decode_token_rejects_non_bearer_header(patched_secret):
+def test_decode_token_rejects_non_bearer_header(patched_jwks):
     with pytest.raises(HTTPException) as exc_info:
         decode_token("Basic abc123")
     assert exc_info.value.status_code == 401
 
 
-def test_decode_token_rejects_expired_token(patched_secret):
+def test_decode_token_rejects_expired_token(patched_jwks):
     token = make_token(expired=True)
     with pytest.raises(HTTPException) as exc_info:
         decode_token(f"Bearer {token}")
     assert exc_info.value.status_code == 401
 
 
-def test_decode_token_rejects_wrong_signature(patched_secret):
-    token = jwt.encode(
-        {"sub": "user-1", "aud": "authenticated", "exp": int(time.time()) + 3600},
-        "a-completely-different-secret",
-        algorithm="HS256",
-    )
+def test_decode_token_rejects_wrong_signature(patched_jwks):
+    token = make_token(key=_wrong_private_key)
     with pytest.raises(HTTPException) as exc_info:
         decode_token(f"Bearer {token}")
     assert exc_info.value.status_code == 401
 
 
-def test_decode_token_accepts_valid_token(patched_secret):
+def test_decode_token_accepts_valid_token(patched_jwks):
     token = make_token()
     payload = decode_token(f"Bearer {token}")
     assert payload["sub"] == "user-1"
 
 
-def test_get_current_user_returns_role_from_db(patched_secret, monkeypatch):
+def test_get_current_user_returns_role_from_db(patched_jwks, monkeypatch):
     monkeypatch.setattr(
         "app.auth.get_service_client", lambda: FakeClient({"user-1": "analyst"})
     )
@@ -100,7 +106,7 @@ def test_get_current_user_returns_role_from_db(patched_secret, monkeypatch):
     assert user.user_id == "user-1"
 
 
-def test_get_current_user_rejects_user_with_no_role(patched_secret, monkeypatch):
+def test_get_current_user_rejects_user_with_no_role(patched_jwks, monkeypatch):
     monkeypatch.setattr("app.auth.get_service_client", lambda: FakeClient({}))
     token = make_token(sub="user-without-role")
     with pytest.raises(HTTPException) as exc_info:
@@ -108,7 +114,7 @@ def test_get_current_user_rejects_user_with_no_role(patched_secret, monkeypatch)
     assert exc_info.value.status_code == 403
 
 
-def test_require_role_allows_matching_role(patched_secret, monkeypatch):
+def test_require_role_allows_matching_role(patched_jwks, monkeypatch):
     monkeypatch.setattr(
         "app.auth.get_service_client", lambda: FakeClient({"user-1": "admin"})
     )
@@ -118,7 +124,7 @@ def test_require_role_allows_matching_role(patched_secret, monkeypatch):
     assert user.role == "admin"
 
 
-def test_require_role_rejects_wrong_role(patched_secret, monkeypatch):
+def test_require_role_rejects_wrong_role(patched_jwks, monkeypatch):
     monkeypatch.setattr(
         "app.auth.get_service_client", lambda: FakeClient({"user-1": "analyst"})
     )

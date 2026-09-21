@@ -47,6 +47,7 @@ def test_known_fraud_sample_is_blocked_end_to_end():
             client.table("agent_decision_log")
             .select("node_name")
             .eq("transaction_id", result["transaction_id"])
+            .order("created_at")
             .execute()
             .data
         )

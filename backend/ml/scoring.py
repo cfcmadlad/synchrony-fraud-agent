@@ -6,7 +6,7 @@ import numpy as np
 import xgboost as xgb
 
 from ml.archetypes import tag_archetype
-from ml.config import ISOLATION_FOREST_PATH, SCORING_CONFIG_PATH, XGB_MODEL_PATH
+from ml.config import ISOLATION_FOREST_PATH, SCORING_CONFIG_PATH, XGB_MODEL_PATH, fusion_alpha_for_event_type
 from ml.features import build_features_single
 
 
@@ -14,23 +14,25 @@ class RiskModel:
     def __init__(self):
         self.supervised_model = xgb.XGBClassifier()
         self.supervised_model.load_model(XGB_MODEL_PATH)
-        self.anomaly_model = joblib.load(ISOLATION_FOREST_PATH)
+        self.anomaly_models = joblib.load(ISOLATION_FOREST_PATH)
         config = json.loads(SCORING_CONFIG_PATH.read_text())
         self.feature_columns = config["feature_columns"]
-        self.anomaly_low = config["anomaly_low"]
-        self.anomaly_high = config["anomaly_high"]
-        self.fusion_alpha = config["fusion_alpha"]
+        self.anomaly_bounds = config["anomaly_bounds"]
 
     def score(self, record: dict) -> dict:
         features = build_features_single(record)[self.feature_columns]
 
         supervised_score = float(self.supervised_model.predict_proba(features)[0, 1])
 
-        raw_anomaly_score = float(-self.anomaly_model.score_samples(features)[0])
-        span = max(self.anomaly_high - self.anomaly_low, 1e-9)
-        anomaly_score = float(np.clip((raw_anomaly_score - self.anomaly_low) / span, 0.0, 1.0))
+        event_type = record["event_type"]
+        anomaly_model = self.anomaly_models[event_type]
+        bounds = self.anomaly_bounds[event_type]
+        raw_anomaly_score = float(-anomaly_model.score_samples(features)[0])
+        span = max(bounds["high"] - bounds["low"], 1e-9)
+        anomaly_score = float(np.clip((raw_anomaly_score - bounds["low"]) / span, 0.0, 1.0))
 
-        risk_score = self.fusion_alpha * supervised_score + (1 - self.fusion_alpha) * anomaly_score
+        fusion_alpha = fusion_alpha_for_event_type(event_type)
+        risk_score = fusion_alpha * supervised_score + (1 - fusion_alpha) * anomaly_score
 
         scores = {
             "supervised_score": supervised_score,

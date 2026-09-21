@@ -1,0 +1,126 @@
+{
+  "dataset_size": 300000,
+  "train_size": 240847,
+  "test_size": 59153,
+  "split_method": "temporal (train on earlier steps, test on later steps)",
+  "fraud_rate": 0.00129,
+  "feature_columns": [
+    "amount",
+    "origin_balance_before",
+    "origin_balance_after",
+    "dest_balance_before",
+    "dest_balance_after",
+    "dest_balance_delta",
+    "dest_balance_error",
+    "hour_of_day",
+    "event_type_loan_disbursement",
+    "event_type_installment_repayment",
+    "event_type_fee_charge",
+    "event_type_account_funding"
+  ],
+  "supervised_only": {
+    "precision": 0.8814432989690721,
+    "recall": 0.8465346534653465,
+    "f1": 0.8636363636363636,
+    "auc_pr": 0.926401120239416
+  },
+  "fused_at_standard_threshold_0.5": {
+    "precision": 0.8911917098445595,
+    "recall": 0.8514851485148515,
+    "f1": 0.8708860759493671,
+    "auc_pr": 0.8385932375243156
+  },
+  "fused_at_deployed_escalate_threshold": {
+    "precision": 0.33992094861660077,
+    "recall": 0.8514851485148515,
+    "f1": 0.4858757062146893,
+    "auc_pr": 0.8385932375243156
+  },
+  "fused_at_deployed_block_threshold": {
+    "precision": 0.9457831325301205,
+    "recall": 0.7772277227722773,
+    "f1": 0.8532608695652174,
+    "auc_pr": 0.8385932375243156
+  },
+  "fusion_alpha_labeled_event_types": 0.7,
+  "fusion_alpha_unlabeled_event_types": 0.6,
+  "cross_validation_5_fold_temporal": {
+    "precision": {
+      "mean": 0.7723833139813302,
+      "std": 0.10141467893795766,
+      "per_fold": [
+        0.8,
+        0.5882352941176471,
+        0.8333333333333334,
+        0.7551020408163265,
+        0.8852459016393442
+      ]
+    },
+    "recall": {
+      "mean": 0.825557235210637,
+      "std": 0.04809593799559162,
+      "per_fold": [
+        0.7619047619047619,
+        0.8,
+        0.8108108108108109,
+        0.9024390243902439,
+        0.8526315789473684
+      ]
+    },
+    "f1": {
+      "mean": 0.7942453289578327,
+      "std": 0.06448578595957796,
+      "per_fold": [
+        0.7804878048780488,
+        0.6779661016949152,
+        0.821917808219178,
+        0.8222222222222222,
+        0.868632707774799
+      ]
+    },
+    "auc_pr": {
+      "mean": 0.8571913712378321,
+      "std": 0.061688020428379474,
+      "per_fold": [
+        0.8280700839916321,
+        0.7645315431929557,
+        0.8432318388926738,
+        0.9154300813793262,
+        0.934693308732572
+      ]
+    }
+  },
+  "algorithm_comparison": {
+    "xgboost": {
+      "precision": 0.8814432989690721,
+      "recall": 0.8465346534653465,
+      "f1": 0.8636363636363636,
+      "auc_pr": 0.926401120239416
+    },
+    "logistic_regression_baseline": {
+      "precision": 0.057227138643067846,
+      "recall": 0.9603960396039604,
+      "f1": 0.10801781737193764,
+      "auc_pr": 0.7202650345958169
+    }
+  },
+  "anomaly_detector_standalone": {
+    "note": "AUC-PR only computable for loan_disbursement, since PaySim never labels fraud on the other three event types \u2014 this detector's real job is catching anomalies there, where no ground truth exists to score against.",
+    "auc_pr_overall": 0.049493638655618614,
+    "auc_pr_loan_disbursement_only": 0.12110035836447318
+  },
+  "reference_with_near_deterministic_features_included": {
+    "included_features": [
+      "origin_balance_delta",
+      "origin_balance_error",
+      "amount_to_origin_balance_ratio",
+      "origin_balance_after_zero"
+    ],
+    "metrics": {
+      "precision": 1.0,
+      "recall": 0.995049504950495,
+      "f1": 0.9975186104218362,
+      "auc_pr": 0.995608789066826
+    }
+  }
+}
