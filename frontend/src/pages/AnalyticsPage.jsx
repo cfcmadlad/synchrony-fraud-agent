@@ -14,7 +14,7 @@ import {
 } from "recharts";
 import { Activity, AlertCircle, BarChart3, Gauge, PieChart as PieChartIcon, ShieldOff, ShieldQuestion, TrendingUp } from "lucide-react";
 import { api } from "../lib/api";
-import { formatArchetype } from "../components/common";
+import { formatArchetype, SmartLoading } from "../components/common";
 
 const DECISION_COLORS = { allow: "#16A34A", escalate: "#B45309", block: "#DC2626" };
 const ARCHETYPE_COLORS = ["#0B63B0", "#16A34A", "#B45309", "#DC2626", "#7C4DBD"];
@@ -85,7 +85,7 @@ export default function AnalyticsPage() {
     };
   }, [flags]);
 
-  if (loading) return <div className="page-loading"><span className="spinner spinner-accent" />Loading analytics…</div>;
+  if (loading) return <SmartLoading label="Loading analytics…" />;
   if (error) return <div className="error-banner"><AlertCircle />{error}</div>;
 
   if (stats.total === 0) {

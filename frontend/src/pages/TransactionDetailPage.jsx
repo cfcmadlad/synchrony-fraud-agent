@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { api } from "../lib/api";
 import { useToast } from "../lib/toast";
-import { AuditStep, StatusBadge, RiskGauge, formatArchetype } from "../components/common";
+import { AuditStep, StatusBadge, RiskGauge, SmartLoading, formatArchetype } from "../components/common";
 
 function buildFallbackExplanation(detectOutput, transaction) {
   const topFeature = detectOutput.top_features?.[0];
@@ -114,7 +114,7 @@ export default function TransactionDetailPage() {
     }
   }
 
-  if (loading) return <div className="page-loading"><span className="spinner spinner-accent" />Loading transaction…</div>;
+  if (loading) return <SmartLoading label="Loading transaction…" />;
   if (error) return <div className="error-banner">{error}</div>;
   if (!transaction) return null;
 

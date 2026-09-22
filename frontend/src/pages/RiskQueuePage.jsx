@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { api } from "../lib/api";
 import { useToast } from "../lib/toast";
-import { AuditStep, StatusBadge, RiskBar, formatArchetype, SkeletonRow, EmptyState } from "../components/common";
+import { AuditStep, StatusBadge, RiskBar, formatArchetype, SkeletonRow, EmptyState, ColdStartPanel, useColdStart } from "../components/common";
 import PinnedTransactions from "../components/PinnedTransactions";
 
 const PIPELINE_STEPS = ["Ingest", "Detect", "Retrieve similar cases", "Explain (LLM)", "Guardrail check", "Decide"];
@@ -63,6 +63,7 @@ export default function RiskQueuePage() {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { isColdStart, pct } = useColdStart(loading);
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState("risk_score");
   const [sortDir, setSortDir] = useState("desc");
@@ -384,6 +385,9 @@ export default function RiskQueuePage() {
         </div>
       )}
 
+      {isColdStart ? (
+        <ColdStartPanel pct={pct} />
+      ) : (
       <div className="table-wrap">
         <table className="data-table">
           <thead>
@@ -437,6 +441,7 @@ export default function RiskQueuePage() {
           />
         )}
       </div>
+      )}
 
       <div className="pagination-bar">
         <button disabled={page === 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>
