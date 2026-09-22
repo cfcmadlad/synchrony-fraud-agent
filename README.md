@@ -5,7 +5,7 @@
 Real-time fraud detection for digital lending. Built for the Synchrony Technology
 Hackathon by **Aditya Rayaprolu** (`2023A3PS0416H`).
 
-**Live app:** https://solaris-fraud-agent-cfcmadlad.vercel.app
+**Live app:** https://solaris-fraud-agent.vercel.app
 **Demo login:** `test-admin@synchrony-fraud-agent.local` / `solaris` (admin) or
 `test-analyst@synchrony-fraud-agent.local` / `solaris` (analyst)
 **Repo:** https://github.com/cfcmadlad/synchrony-fraud-agent

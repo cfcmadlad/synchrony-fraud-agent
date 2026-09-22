@@ -18,6 +18,13 @@ import { api } from "../lib/api";
 import { useToast } from "../lib/toast";
 import { AuditStep, StatusBadge, RiskGauge, SmartLoading, formatArchetype } from "../components/common";
 
+function formatFeatureLine(feature) {
+  if (typeof feature === "string") return feature;
+  const name = feature.feature?.replace(/_/g, " ") ?? "unknown feature";
+  const direction = feature.contribution > 0 ? "increased" : "decreased";
+  return `${name} ${direction} the risk score by ${Math.abs(feature.contribution).toFixed(3)}`;
+}
+
 function buildFallbackExplanation(detectOutput, transaction) {
   const topFeature = detectOutput.top_features?.[0];
   const featureClause = topFeature
@@ -186,7 +193,7 @@ export default function TransactionDetailPage() {
               </label>
               <ul style={{ margin: "8px 0 0", paddingLeft: 18, fontSize: 13.5, color: "var(--text-h)", lineHeight: 1.8 }}>
                 {reasonCodes.top_features.map((f, i) => (
-                  <li key={i}>{typeof f === "string" ? f : JSON.stringify(f)}</li>
+                  <li key={i}>{formatFeatureLine(f)}</li>
                 ))}
               </ul>
             </div>
