@@ -1350,6 +1350,54 @@
   font-size: 13px;
 }
 
+.page-loading.cold-start {
+  flex-direction: column;
+  gap: 16px;
+  padding: 56px 24px;
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+.cold-start-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: center;
+}
+
+.cold-start-copy strong {
+  color: var(--text-h);
+  font-size: 14px;
+}
+
+.cold-start-copy span {
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-dim);
+}
+
+.cold-start-track {
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--bg-elevated, #eef1f6);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.cold-start-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 999px;
+  transition: width 300ms ease-out;
+}
+
+.cold-start-pct {
+  font-size: 11px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
 .pagination-bar {
   display: flex;
   align-items: center;

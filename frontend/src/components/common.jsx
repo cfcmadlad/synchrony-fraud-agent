@@ -1,5 +1,64 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Clock3, ShieldAlert, ShieldCheck, ShieldX } from "lucide-react";
+
+const COLD_START_THRESHOLD_MS = 2500;
+const COLD_START_ESTIMATE_MS = 50000;
+
+export function useColdStart(active) {
+  const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    if (!active) {
+      setElapsed(0);
+      return undefined;
+    }
+    const start = Date.now();
+    const id = setInterval(() => setElapsed(Date.now() - start), 200);
+    return () => clearInterval(id);
+  }, [active]);
+
+  const isColdStart = active && elapsed > COLD_START_THRESHOLD_MS;
+  // Eased estimate: climbs fast at first, slows near the end, never quite hits 100
+  // since we have no real signal the backend is done until the request resolves.
+  const rawProgress = Math.min(elapsed / COLD_START_ESTIMATE_MS, 1);
+  const pct = Math.round((1 - Math.pow(1 - rawProgress, 2)) * 92);
+
+  return { isColdStart, pct };
+}
+
+export function ColdStartPanel({ pct }) {
+  return (
+    <div className="page-loading cold-start">
+      <div className="cold-start-copy">
+        <strong>Waking up the server…</strong>
+        <span>
+          Our backend runs on a free-tier host that sleeps after 15 minutes of
+          inactivity. First request after that can take up to a minute — this is not
+          an error.
+        </span>
+      </div>
+      <div className="cold-start-track">
+        <div className="cold-start-fill" style={{ width: `${pct}%` }} />
+      </div>
+      <span className="cold-start-pct">{pct}%</span>
+    </div>
+  );
+}
+
+export function SmartLoading({ label = "Loading…" }) {
+  const { isColdStart, pct } = useColdStart(true);
+
+  if (!isColdStart) {
+    return (
+      <div className="page-loading">
+        <span className="spinner spinner-accent" />
+        {label}
+      </div>
+    );
+  }
+
+  return <ColdStartPanel pct={pct} />;
+}
 
 const STATUS_ICON = {
   pending: Clock3,
