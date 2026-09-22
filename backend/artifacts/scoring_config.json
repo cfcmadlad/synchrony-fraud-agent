@@ -1,0 +1,34 @@
+{
+  "feature_columns": [
+    "amount",
+    "origin_balance_before",
+    "origin_balance_after",
+    "dest_balance_before",
+    "dest_balance_after",
+    "dest_balance_delta",
+    "dest_balance_error",
+    "hour_of_day",
+    "event_type_loan_disbursement",
+    "event_type_installment_repayment",
+    "event_type_fee_charge",
+    "event_type_account_funding"
+  ],
+  "anomaly_bounds": {
+    "loan_disbursement": {
+      "low": 0.32576804893349603,
+      "high": 0.6371227286338932
+    },
+    "installment_repayment": {
+      "low": 0.37055954717888284,
+      "high": 0.6829589258831743
+    },
+    "fee_charge": {
+      "low": 0.33338280593444714,
+      "high": 0.6299825328408798
+    },
+    "account_funding": {
+      "low": 0.36414399257175595,
+      "high": 0.6393177275670245
+    }
+  }
+}
